@@ -1,0 +1,18 @@
+manager:
+    name: shard-1 # REQUIRED
+    port: 5532 # DEFAULT: 5532
+    shard_id: 0 # DEFAULT: 0
+    neighbours: # DEFAULT: EMPTY , NOT RECOMMENDED
+        shard-2: "127.0.0.1"
+
+cache:
+    # CHOOSE CACHE TYPE, CONFIGURATION STRUCTURE
+    # CHANGES WITH CACHE TYPE.
+    type: "redis" # REQUIRED
+    config:
+        tls: false # DEFAULT: false
+        port: 6379 # DEFAULT: 6379
+        db: 0 # DEFAULT: 0
+        host: localhost # DEFAULT: localhost
+        username: # DEFAULT: EMPTY
+        password: # DEFAULT: EMPTY
