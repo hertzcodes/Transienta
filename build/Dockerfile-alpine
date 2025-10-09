@@ -1,0 +1,16 @@
+FROM rust@sha256:ef86f37c2819ebd1ecb1dbd7efda70c693cb013232688aa136a5a2f1e3b65e55 AS builder
+# smaller glibc
+RUN apk add --no-cache musl-dev g++
+WORKDIR /app
+COPY . .
+RUN cargo build --release
+
+FROM alpine@sha256:765942a4039992336de8dd5db680586e1a206607dd06170ff0a37267a9e01958
+# tls certificates
+RUN apk add --no-cache ca-certificates 
+
+WORKDIR /transienta
+COPY --from=builder /app/target/release/transienta .
+
+RUN mkdir -p /etc/transienta
+CMD ["./transienta"]
