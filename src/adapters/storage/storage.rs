@@ -12,6 +12,7 @@ type Call = String;
 type Write = String;
 type Invalidation = String;
 type ServiceName = String;
+
 #[derive(PartialEq, Eq, Hash, Clone)]
 pub enum Item {
     Call(Call),
@@ -29,15 +30,25 @@ type CallersAndCalls = HashMap<ServiceName, Call>; // service_name, call
 
 pub struct HistoryStorageList {
     items: Vec<HistoryItem>,
+    call_indexes: HashMap<Call, Vec<usize>>,
 }
 
 impl HistoryStorageList {
     pub fn new() -> Self {
-        return HistoryStorageList { items: Vec::new() };
+        return HistoryStorageList {
+            items: Vec::new(),
+            call_indexes: HashMap::new(),
+        };
     }
 
-    pub fn items(&self) -> &Vec<HistoryItem> {
-        return &self.items;
+    pub fn items(&mut self) -> &mut [HistoryItem] {
+        return &mut self.items;
+    }
+
+    pub fn get_items_and_locations(
+        &mut self,
+    ) -> (&mut Vec<HistoryItem>, &mut HashMap<Call, Vec<usize>>) {
+        (&mut self.items, &mut self.call_indexes)
     }
 }
 

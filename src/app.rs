@@ -17,6 +17,16 @@ impl App {
         return app;
     }
 
+    #[cfg(test)]
+    #[allow(dead_code)]
+    #[deprecated(note = "use App::new instead")]
+    pub fn mock_app(cfg: config::Config) -> Self {
+        return App {
+            cfg: cfg,
+            database: None,
+        };
+    }
+
     fn set_db(&mut self) {
         self.database = match &self.cfg.cache {
             config::CacheConfig::Redis(_) => {

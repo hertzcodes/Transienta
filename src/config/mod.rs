@@ -1,2 +1,2 @@
 mod config;
-pub use config::{CacheConfig, Config, RedisConfig};
+pub use config::{CacheConfig, Config, ManagerConfig, RedisConfig};
