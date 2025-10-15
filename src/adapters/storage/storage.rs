@@ -13,7 +13,7 @@ type Write = String;
 type Invalidation = String;
 type ServiceName = String;
 
-#[derive(PartialEq, Eq, Hash, Clone)]
+#[derive(PartialEq, Eq, Hash)]
 pub enum Item {
     Call(Call),
     Write(Write),
@@ -33,6 +33,7 @@ pub struct HistoryStorageList {
     call_indexes: HashMap<Call, Vec<usize>>,
 }
 
+#[deprecated(note = "use VersionedHistoryStorage instead")]
 impl HistoryStorageList {
     pub fn new() -> Self {
         return HistoryStorageList {
@@ -94,5 +95,53 @@ impl RouteStorage {
                 self.items.push(item, new_map);
             }
         }
+    }
+}
+
+pub struct HistoryStorageListWithDeps {
+    pub history: HistoryStorageList,
+    routes: RouteStorage,
+}
+
+impl HistoryStorageListWithDeps {
+    pub fn new(routes_size: usize) -> Self {
+        return HistoryStorageListWithDeps {
+            history: HistoryStorageList::new(),
+            routes: RouteStorage::new(routes_size),
+        };
+    }
+
+    pub fn validate_call(&mut self, args: Item, route: Vec<String>) -> bool {
+        let route_set: HashSet<String> = route.into_iter().collect();
+
+        for item in self.history.items().iter_mut().rev() {
+            let validation = match item {
+                HistoryItem::Args(set) => {
+                    if let Item::Call(call_value) = &args {
+                        if set.contains(call_value) {
+                            set.remove(call_value);
+                            return true;
+                        }
+                    }
+                    true
+                }
+                HistoryItem::Write(data) => !route_set.contains(data),
+                HistoryItem::Invalidation(data) => !route_set.contains(data),
+            };
+
+            if !validation {
+                return false;
+            }
+        }
+        // FIXME: this means history was empty
+        return true;
+    }
+
+    pub fn history(&mut self) -> &mut HistoryStorageList {
+        return &mut self.history;
+    }
+
+    pub fn routes(&mut self) -> &mut RouteStorage {
+        return &mut self.routes;
     }
 }
