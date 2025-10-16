@@ -31,7 +31,7 @@ fn create_manager() -> Manager {
 fn test_validate_call_no_history() {
     let mut manager = create_manager();
     let result = manager.validate_call(Item::Call("c1".to_string()), vec!["r1".to_string()]);
-    assert_eq!(result, true);
+    assert_eq!(result, false);
 }
 
 #[test]
@@ -44,6 +44,18 @@ fn test_validate_call_with_history_valid() {
 }
 
 #[test]
+fn test_validate_call_double_write() {
+    let mut manager = create_manager();
+    let history = manager.get_history();
+    history.grow(Item::Call("c1".to_string()));
+    history.grow(Item::Write("r1".to_string()));
+    history.grow(Item::Call("c1".to_string()));
+    history.grow(Item::Write("r2".to_string()));
+    let result = manager.validate_call(Item::Call("c1".to_string()), vec!["r1".to_string()]);
+    assert_eq!(result, true);
+}
+
+#[test]
 fn test_validate_call_with_history_invalid() {
     let mut manager = create_manager();
     let history = manager.get_history();
@@ -51,7 +63,12 @@ fn test_validate_call_with_history_invalid() {
     history.grow(Item::Call("c1".to_string()));
     // a write r1 happened this means c1 is no longer valid
     history.grow(Item::Write("r1".to_string()));
-    let result = manager.validate_call(Item::Call("c1".to_string()), vec!["r1".to_string()]);
+    history.grow(Item::Write("r2".to_string()));
+    // history.grow(Item::Call("c1".to_string()));
+    let result = manager.validate_call(
+        Item::Call("c1".to_string()),
+        vec!["r1".to_string(), "r2".to_string()],
+    );
     assert_eq!(result, false);
 }
 

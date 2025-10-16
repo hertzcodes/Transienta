@@ -9,3 +9,11 @@ lru = "0.16.1"
 redis = "0.32.7"
 serde = "1.0.228"
 serde_yaml = "0.9.34"
+
+[dev-dependencies]
+criterion = "0.5"
+
+[[bench]]
+name = "validation_benchmark"
+harness = false
+test = true

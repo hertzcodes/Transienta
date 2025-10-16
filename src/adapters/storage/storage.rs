@@ -134,7 +134,7 @@ impl HistoryStorageListWithDeps {
             }
         }
         // FIXME: this means history was empty
-        return true;
+        return false;
     }
 
     pub fn history(&mut self) -> &mut HistoryStorageList {
