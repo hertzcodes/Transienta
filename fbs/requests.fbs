@@ -1,0 +1,25 @@
+namespace fbs;
+
+enum RequestType : uint8 {
+  Start = 0,
+  Invalidation = 1,
+  End = 2
+}
+
+table InvalidationRequest {
+  number: RequestType;
+  key: string;
+}
+
+table StartRequest {
+  number: RequestType;
+  args: uint32;
+}
+
+table EndRequest {
+  number: RequestType;
+  args: uint32;
+  caller: string;
+  deps: [string];
+  resp: [ubyte];
+}

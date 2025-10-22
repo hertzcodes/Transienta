@@ -43,9 +43,9 @@ func (c *Client) StartRequest(req []byte, caller string, base context.Context) *
 	ctx := newCtx(caller, base)
 	ctx.args = utils.Hash(req)
 
-	request := comms.Request{
-		Type: comms.StartRequest,
-		Args: ctx.args,
+	request := comms.StartRequest{
+		Number: comms.Start,
+		Args:   ctx.args,
 	}
 
 	_ = request
@@ -72,9 +72,9 @@ func (c *Client) AddDependency(ctx *Ctx, key string) error {
 // call when you are updating or writing to a key. this invalidates the key from cache
 func (c *Client) Invalidate(key string) {
 
-	request := comms.Request{
-		Type: comms.InvalidationRequest,
-		Key:  key,
+	request := comms.InvalidationRequest{
+		Number: comms.Invalidation,
+		Key:    key,
 	}
 
 	_ = request
@@ -86,8 +86,8 @@ func (c *Client) EndRequest(ctx *Ctx, resp any) {
 	delete(c.deps, ctx.id)
 	c.mu.Unlock()
 
-	request := comms.Request{
-		Type:   comms.EndRequest,
+	request := comms.EndRequest{
+		Number: comms.End,
 		Args:   ctx.args,
 		Caller: ctx.caller,
 		Deps:   deps,
