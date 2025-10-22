@@ -30,7 +30,11 @@ fn create_manager() -> Manager {
 #[test]
 fn test_validate_call_no_history() {
     let mut manager = create_manager();
-    let result = manager.validate_call(Item::Call("c1".to_string()), vec!["r1".to_string()]);
+    let result = manager.validate_call(
+        Item::Request("c1".to_string()),
+        vec!["r1".to_string()],
+        "caller".to_string(),
+    );
     assert_eq!(result, false);
 }
 
@@ -38,8 +42,12 @@ fn test_validate_call_no_history() {
 fn test_validate_call_with_history_valid() {
     let mut manager = create_manager();
     let history = manager.get_history();
-    history.grow(Item::Call("c1".to_string()));
-    let result = manager.validate_call(Item::Call("c1".to_string()), vec!["r1".to_string()]);
+    history.grow(Item::Request("c1".to_string()));
+    let result = manager.validate_call(
+        Item::Request("c1".to_string()),
+        vec!["r1".to_string()],
+        "caller".to_string(),
+    );
     assert_eq!(result, true);
 }
 
@@ -47,11 +55,15 @@ fn test_validate_call_with_history_valid() {
 fn test_validate_call_double_write() {
     let mut manager = create_manager();
     let history = manager.get_history();
-    history.grow(Item::Call("c1".to_string()));
+    history.grow(Item::Request("c1".to_string()));
     history.grow(Item::Write("r1".to_string()));
-    history.grow(Item::Call("c1".to_string()));
+    history.grow(Item::Request("c1".to_string()));
     history.grow(Item::Write("r2".to_string()));
-    let result = manager.validate_call(Item::Call("c1".to_string()), vec!["r1".to_string()]);
+    let result = manager.validate_call(
+        Item::Request("c1".to_string()),
+        vec!["r1".to_string()],
+        "caller".to_string(),
+    );
     assert_eq!(result, true);
 }
 
@@ -60,14 +72,15 @@ fn test_validate_call_with_history_invalid() {
     let mut manager = create_manager();
     let history = manager.get_history();
     // valid here
-    history.grow(Item::Call("c1".to_string()));
+    history.grow(Item::Request("c1".to_string()));
     // a write r1 happened this means c1 is no longer valid
     history.grow(Item::Write("r1".to_string()));
     history.grow(Item::Write("r2".to_string()));
     // history.grow(Item::Call("c1".to_string()));
     let result = manager.validate_call(
-        Item::Call("c1".to_string()),
+        Item::Request("c1".to_string()),
         vec!["r1".to_string(), "r2".to_string()],
+        "caller".to_string(),
     );
     assert_eq!(result, false);
 }
@@ -78,8 +91,9 @@ fn test_validate_call_with_history_invalidation() {
     let history = manager.get_history();
     history.grow(Item::Invalidation("Inv1".to_string()));
     let result = manager.validate_call(
-        Item::Call("c1".to_string()),
+        Item::Request("c1".to_string()),
         vec!["Inv1".to_string(), "r1".to_string()],
+        "caller".to_string(),
     );
     assert_eq!(result, false);
 }

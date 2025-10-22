@@ -15,7 +15,7 @@ type ServiceName = String;
 
 #[derive(PartialEq, Eq, Hash)]
 pub enum Item {
-    Call(Call),
+    Request(Call),
     Write(Write),
     Invalidation(Invalidation),
 }
@@ -56,7 +56,7 @@ impl HistoryStorageList {
 impl HistoryStorage for HistoryStorageList {
     fn grow(&mut self, key: Item) {
         match key {
-            Item::Call(data) => {
+            Item::Request(data) => {
                 // borrows the last item as mutable
                 if let Some(HistoryItem::Args(last)) = self.items.last_mut() {
                     last.insert(data);
@@ -117,7 +117,7 @@ impl HistoryStorageListWithDeps {
         for item in self.history.items().iter_mut().rev() {
             let validation = match item {
                 HistoryItem::Args(set) => {
-                    if let Item::Call(call_value) = &args {
+                    if let Item::Request(call_value) = &args {
                         if set.contains(call_value) {
                             set.remove(call_value);
                             return true;

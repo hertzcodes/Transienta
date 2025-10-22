@@ -19,12 +19,14 @@ impl Manager {
             storage: version_storage::VersionedHistoryStorage::new(),
         };
     }
+
+    pub fn run(&self) {}
     // TODO: this has to return an immutable reference or be deleted later
     pub fn get_history(&mut self) -> &mut version_storage::VersionedHistoryStorage {
         return &mut self.storage;
     }
 
-    pub fn validate_call(&mut self, args: Item, route: Vec<String>) -> bool {
-        return self.storage.validate_call(args, route);
+    pub fn validate_call(&mut self, args: Item, route: Vec<String>, caller: String) -> bool {
+        return self.storage.validate_call(args, route, caller);
     }
 }
