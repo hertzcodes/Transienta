@@ -1,0 +1,47 @@
+apiVersion: dapr.io/v1alpha1
+kind: Component
+metadata:
+  name: mucache-redis
+  namespace: default
+spec:
+  type: state.redis
+  version: v1
+  metadata:
+  - name: redisHost
+    value: redis:6379
+  - name: redisDB
+    value: "0"
+  - name: enableTLS
+    value: "false"
+---
+apiVersion: dapr.io/v1alpha1
+kind: Configuration
+metadata:
+  name: mucache-config
+  namespace: default
+spec:
+  httpPipeline:
+    handlers:
+      - name: mucache-middleware
+        type: middleware.http.custom
+        spec:
+          component: mucache-middleware
+  
+  middleware:
+    http:
+      - name: mucache-middleware
+        type: middleware.http.custom
+        spec:
+          endpoint: "http://localhost:9090"
+---
+apiVersion: dapr.io/v1alpha1  
+kind: Component
+metadata:
+  name: mucache-middleware
+  namespace: default
+spec:
+  type: middleware.http.custom
+  version: v1
+  metadata:
+  - name: endpoint
+    value: "http://localhost:9090"

@@ -1,0 +1,145 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: my-service-with-mucache
+  labels:
+    app: my-service
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: my-service
+  template:
+    metadata:
+      labels:
+        app: my-service
+      annotations:
+        # Dapr configuration
+        dapr.io/enabled: "true"
+        dapr.io/app-id: "my-service"
+        dapr.io/app-port: "3000"
+        dapr.io/config: "mucache-config"
+        dapr.io/log-level: "info"
+    spec:
+      containers:
+      # Your actual microservice
+      - name: my-service
+        image: my-service:latest
+        ports:
+        - containerPort: 3000
+        env:
+        - name: SERVICE_NAME
+          value: "my-service"
+        resources:
+          requests:
+            memory: "64Mi"
+            cpu: "50m"
+          limits:
+            memory: "256Mi"
+            cpu: "200m"
+      
+      # MuCache Wrapper (interceptor only)
+      - name: mucache-wrapper
+        image: mucache-wrapper:latest
+        ports:
+        - containerPort: 9090  # Middleware
+        - containerPort: 9091  # Commands  
+        env:
+        - name: TARGET_SERVICE_NAME
+          value: "my-service"
+        - name: SERVICE_NAME
+          value: "my-service"
+        - name: POD_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        - name: DAPR_HTTP_ENDPOINT
+          value: "http://localhost:3500"
+        - name: DAPR_STATE_STORE
+          value: "mucache-redis"
+        - name: CACHE_MANAGER_ZMQ
+          value: "tcp://localhost:5555"
+        - name: MIDDLEWARE_PORT
+          value: "9090"
+        - name: COMMANDS_PORT
+          value: "9091"
+        resources:
+          requests:
+            memory: "32Mi"
+            cpu: "25m"
+          limits:
+            memory: "128Mi"
+            cpu: "100m"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 9091
+          initialDelaySeconds: 10
+          periodSeconds: 30
+        readinessProbe:
+          httpGet:
+            path: /health  
+            port: 9091
+          initialDelaySeconds: 5
+          periodSeconds: 10
+          
+      # Cache Manager (connects to wrapper via ZMQ)
+      - name: cache-manager
+        image: mucache:latest  # Your Rust Cache Manager
+        ports:
+        - containerPort: 5555  # ZMQ
+        - containerPort: 5532  # HTTP
+        env:
+        - name: SERVICE_NAME
+          value: "my-service"  
+        - name: ZMQ_BIND_ADDR
+          value: "tcp://*:5555"
+        - name: MUCACHE_CONFIG_PATH
+          value: "/etc/mucache/config.yaml"
+        - name: RUST_LOG
+          value: "info"
+        resources:
+          requests:
+            memory: "16Mi"
+            cpu: "10m" 
+          limits:
+            memory: "64Mi"
+            cpu: "50m"
+        volumeMounts:
+        - name: config
+          mountPath: /etc/mucache
+          
+      volumes:
+      - name: config
+        configMap:
+          name: mucache-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: my-service
+spec:
+  selector:
+    app: my-service
+  ports:
+  - name: http
+    port: 80
+    targetPort: 3000
+  type: ClusterIP
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: mucache-config
+data:
+  config.yaml: |
+    manager:
+      name: my-service
+      port: 5532
+      shard_id: 0
+    cache:
+      type: redis
+      config:
+        host: redis
+        port: 6379
+        db: 0
