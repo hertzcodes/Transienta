@@ -19,6 +19,7 @@ type Request interface {
 
 type StartRequest struct {
 	Number RequestType
+	Time   uint64
 	Args   uint32
 }
 
@@ -26,6 +27,7 @@ func (s *StartRequest) Serialize() []byte {
 	builder := flatbuffers.NewBuilder(0)
 	fbs.StartRequestStart(builder)
 	fbs.StartRequestAddNumber(builder, fbs.RequestTypeStart)
+	fbs.EndRequestAddTime(builder, s.Time)
 	fbs.StartRequestAddArgs(builder, s.Args)
 
 	offset := fbs.StartRequestEnd(builder)
@@ -36,6 +38,7 @@ func (s *StartRequest) Serialize() []byte {
 type EndRequest struct {
 	Number RequestType
 	Args   uint32
+	Time   uint64
 	Caller string
 	Deps   []string
 	Resp   []byte
@@ -58,6 +61,7 @@ func (e *EndRequest) Serialize() []byte {
 
 	fbs.EndRequestStart(builder)
 	fbs.EndRequestAddNumber(builder, fbs.RequestTypeEnd)
+	fbs.EndRequestAddTime(builder, e.Time)
 	fbs.EndRequestAddArgs(builder, e.Args)
 	fbs.EndRequestAddCaller(builder, callerOffset)
 	fbs.EndRequestAddDeps(builder, depsVector)
@@ -70,6 +74,7 @@ func (e *EndRequest) Serialize() []byte {
 
 type InvalidationRequest struct {
 	Number RequestType
+	Time   uint64
 	Key    string
 }
 

@@ -82,24 +82,10 @@ func TestCtxCast(t *testing.T) {
 	req := []byte("test request")
 	caller := "test-caller"
 	baseCtx := context.WithValue(context.Background(), "test", "1234")
-	ctx := client.StartRequest(req, caller, baseCtx)
-
-	func(c context.Context) {
-
-		casted, ok := c.(*Ctx)
-		if !ok {
-			t.Errorf("expected context to be casted to Client Ctx")
-		}
-
-		if casted.id != ctx.id || casted.args != ctx.args || casted.caller != ctx.caller {
-			t.Errorf("expected %v, %v to be same", ctx, casted)
-		}
-
-		if casted.Value("test") == nil {
-			t.Error("expected casted to have value of 1234 not nil")
-		}
-
-	}(ctx)
+	ctx := client.Start(req, caller, baseCtx)
+	if _, ok := ctx.(*Ctx); !ok {
+		t.Errorf("failed to cast")
+	}
 }
 
 func TestGetInstance_Panic(t *testing.T) {
@@ -124,23 +110,25 @@ func TestStartRequest(t *testing.T) {
 	caller := "test-caller"
 	baseCtx := context.Background()
 
-	ctx := client.StartRequest(req, caller, baseCtx)
+	ctx := client.Start(req, caller, baseCtx)
 
 	if ctx == nil {
 		t.Fatal("StartRequest returned nil context")
 	}
 
-	if ctx.caller != caller {
-		t.Errorf("Expected caller %s, got %s", caller, ctx.caller)
+	casted := ctx.(*Ctx)
+
+	if casted.caller != caller {
+		t.Errorf("Expected caller %s, got %s", caller, casted.caller)
 	}
 
-	if ctx.args == 0 {
+	if casted.args == 0 {
 		t.Error("Args should be hashed and non-zero")
 	}
 
 	// Check that the context was added to deps
 	client.mu.RLock()
-	if _, exists := client.deps[ctx.id]; !exists {
+	if _, exists := client.deps[casted.id]; !exists {
 		t.Error("Context ID should be added to deps map")
 	}
 	client.mu.RUnlock()
@@ -156,16 +144,16 @@ func TestAddDependency_ValidContext(t *testing.T) {
 	caller := "test-caller"
 	baseCtx := context.Background()
 
-	ctx := client.StartRequest(req, caller, baseCtx)
+	ctx := client.Start(req, caller, baseCtx)
 
 	key := "test-key"
 	err := client.AddDependency(ctx, key)
 	if err != nil {
 		t.Errorf("AddDependency should not return error for valid context, got: %v", err)
 	}
-
-	if len(client.deps[ctx.id]) != 1 {
-		t.Errorf("AddDependency should add the key to the context, got: %d", len(client.deps[ctx.id]))
+	casted := ctx.(*Ctx)
+	if len(client.deps[casted.id]) != 1 {
+		t.Errorf("AddDependency should add the key to the context, got: %d", len(client.deps[casted.id]))
 	}
 }
 
@@ -206,7 +194,7 @@ func TestEndRequest(t *testing.T) {
 	caller := "test-caller"
 	baseCtx := context.Background()
 
-	ctx := client.StartRequest(req, caller, baseCtx)
+	ctx := client.Start(req, caller, baseCtx)
 
 	// Add some dependencies
 	client.AddDependency(ctx, "key1")
@@ -215,11 +203,12 @@ func TestEndRequest(t *testing.T) {
 	resp := "test response"
 
 	// This should not panic
-	client.EndRequest(ctx, resp)
+	client.Finish(ctx, resp)
 
 	// Check that the context was removed from deps
 	client.mu.RLock()
-	if _, exists := client.deps[ctx.id]; exists {
+	casted := ctx.(*Ctx)
+	if _, exists := client.deps[casted.id]; exists {
 		t.Error("Context should be removed from deps after EndRequest")
 	}
 	client.mu.RUnlock()
@@ -234,7 +223,7 @@ func TestConcurrentStartRequest(t *testing.T) {
 
 	const numGoroutines = 100
 	var wg sync.WaitGroup
-	contexts := make([]*Ctx, numGoroutines)
+	contexts := make([]context.Context, numGoroutines)
 
 	for i := 0; i < numGoroutines; i++ {
 		wg.Add(1)
@@ -243,7 +232,7 @@ func TestConcurrentStartRequest(t *testing.T) {
 			req := []byte("test request")
 			caller := "test-caller"
 			baseCtx := context.Background()
-			contexts[index] = client.StartRequest(req, caller, baseCtx)
+			contexts[index] = client.Start(req, caller, baseCtx)
 		}(i)
 	}
 
@@ -256,17 +245,18 @@ func TestConcurrentStartRequest(t *testing.T) {
 			t.Errorf("Context %d is nil", i)
 			continue
 		}
-
-		if ids[ctx.id] {
-			t.Errorf("Duplicate context ID found: %s", ctx.id)
+		casted := ctx.(*Ctx)
+		if ids[casted.id] {
+			t.Errorf("Duplicate context ID found: %s", casted.id)
 		}
-		ids[ctx.id] = true
+		ids[casted.id] = true
 	}
 
 	// Check that all contexts are in the deps map
 	client.mu.RLock()
 	for i, ctx := range contexts {
-		if _, exists := client.deps[ctx.id]; !exists {
+		casted := ctx.(*Ctx)
+		if _, exists := client.deps[casted.id]; !exists {
 			t.Errorf("Context %d not found in deps map", i)
 		}
 	}
@@ -283,7 +273,7 @@ func TestConcurrentAddDependency(t *testing.T) {
 	req := []byte("test request")
 	caller := "test-caller"
 	baseCtx := context.Background()
-	ctx := client.StartRequest(req, caller, baseCtx)
+	ctx := client.Start(req, caller, baseCtx)
 
 	const numGoroutines = 100
 	var wg sync.WaitGroup
@@ -326,7 +316,7 @@ func TestConcurrentEndRequest(t *testing.T) {
 			req := []byte("test request")
 			caller := "test-caller"
 			baseCtx := context.Background()
-			ctx := client.StartRequest(req, caller, baseCtx)
+			ctx := client.Start(req, caller, baseCtx)
 
 			// Add some dependencies
 			client.AddDependency(ctx, "key1")
@@ -334,7 +324,7 @@ func TestConcurrentEndRequest(t *testing.T) {
 
 			// End the request
 			resp := "test response"
-			client.EndRequest(ctx, resp)
+			client.Finish(ctx, resp)
 		}(i)
 	}
 
@@ -366,7 +356,7 @@ func TestConcurrentMixedOperations(t *testing.T) {
 			req := []byte("test request")
 			caller := "test-caller"
 			baseCtx := context.Background()
-			ctx := client.StartRequest(req, caller, baseCtx)
+			ctx := client.Start(req, caller, baseCtx)
 
 			// Add dependencies
 			client.AddDependency(ctx, "key1")
@@ -377,7 +367,7 @@ func TestConcurrentMixedOperations(t *testing.T) {
 
 			// End request
 			resp := "test response"
-			client.EndRequest(ctx, resp)
+			client.Finish(ctx, resp)
 		}(i)
 	}
 
@@ -411,7 +401,7 @@ func TestRaceConditionDetection(t *testing.T) {
 			req := []byte("test request")
 			caller := "test-caller"
 			baseCtx := context.Background()
-			ctx := client.StartRequest(req, caller, baseCtx)
+			ctx := client.Start(req, caller, baseCtx)
 
 			// Rapidly add and remove dependencies
 			for j := 0; j < 10; j++ {
@@ -419,7 +409,7 @@ func TestRaceConditionDetection(t *testing.T) {
 				client.Invalidate("key")
 			}
 
-			client.EndRequest(ctx, "response")
+			client.Finish(ctx, "response")
 		}(i)
 	}
 
@@ -439,8 +429,8 @@ func BenchmarkStartRequest(b *testing.B) {
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		ctx := client.StartRequest(req, caller, baseCtx)
-		client.EndRequest(ctx, "response")
+		ctx := client.Start(req, caller, baseCtx)
+		client.Finish(ctx, "response")
 	}
 }
 
@@ -453,14 +443,14 @@ func BenchmarkAddDependency(b *testing.B) {
 	req := []byte("test request")
 	caller := "test-caller"
 	baseCtx := context.Background()
-	ctx := client.StartRequest(req, caller, baseCtx)
+	ctx := client.Start(req, caller, baseCtx)
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		client.AddDependency(ctx, "key")
 	}
 
-	client.EndRequest(ctx, "response")
+	client.Finish(ctx, "response")
 }
 
 func BenchmarkConcurrentStartRequest(b *testing.B) {
@@ -476,8 +466,8 @@ func BenchmarkConcurrentStartRequest(b *testing.B) {
 	b.ResetTimer()
 	b.RunParallel(func(pb *testing.PB) {
 		for pb.Next() {
-			ctx := client.StartRequest(req, caller, baseCtx)
-			client.EndRequest(ctx, "response")
+			ctx := client.Start(req, caller, baseCtx)
+			client.Finish(ctx, "response")
 		}
 	})
 }

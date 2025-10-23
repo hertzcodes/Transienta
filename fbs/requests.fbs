@@ -18,6 +18,7 @@ table StartRequest {
 
 table EndRequest {
   number: RequestType;
+  time: uint64;
   args: uint32;
   caller: string;
   deps: [string];

@@ -8,6 +8,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/hertzcodes/transienta/go-sdk/internal/comms"
 	"github.com/hertzcodes/transienta/go-sdk/internal/utils"
+	"go.nanomsg.org/mangos/v3"
 )
 
 var (
@@ -19,6 +20,7 @@ type Client struct {
 	deps   map[uuid.UUID][]string
 	mu     sync.RWMutex
 	config ClientConfig
+	socket mangos.Socket
 }
 
 func New(config ClientConfig) *Client {
@@ -27,6 +29,12 @@ func New(config ClientConfig) *Client {
 			deps:   make(map[uuid.UUID][]string),
 			config: config,
 		}
+		sock, err := comms.Connect(config.SocketURL)
+		if err != nil {
+			return
+		}
+
+		instance.socket = sock
 	})
 
 	return instance
@@ -39,27 +47,31 @@ func GetInstance() *Client {
 	return instance
 }
 
-func (c *Client) StartRequest(req []byte, caller string, base context.Context) *Ctx {
+func (c *Client) Start(req []byte, caller string, base context.Context) context.Context {
 	ctx := newCtx(caller, base)
-	ctx.args = utils.Hash(req)
+	ctx.args = utils.Hash([]byte(c.config.ManagerIP), req)
 
-	request := comms.StartRequest{
-		Number: comms.Start,
-		Args:   ctx.args,
-	}
-
-	_ = request
-
-	// maybe there's no need to lock or unlock? cause ids are unique
 	c.mu.Lock()
 	c.deps[ctx.id] = make([]string, 0)
 	c.mu.Unlock()
 
+	request := &comms.StartRequest{
+		Number: comms.Start,
+		Args:   ctx.args,
+	}
+
+	if c.socket != nil {
+		c.socket.Send(request.Serialize())
+	}
 	return ctx
 }
 
 // call this when you are reading from a database key or calling another service
-func (c *Client) AddDependency(ctx *Ctx, key string) error {
+func (c *Client) AddDependency(ct context.Context, key string) error {
+	ctx, ok := ct.(*Ctx)
+	if !ok {
+		panic("invalid type of context provided. make sure it's originated from a client.Ctx")
+	}
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	if _, exists := c.deps[ctx.id]; exists {
@@ -76,23 +88,32 @@ func (c *Client) Invalidate(key string) {
 		Number: comms.Invalidation,
 		Key:    key,
 	}
-
-	_ = request
+	if c.socket != nil {
+		c.socket.Send(request.Serialize())
+	}
 }
 
-func (c *Client) EndRequest(ctx *Ctx, resp any) {
+func (c *Client) Finish(ct context.Context, resp any) {
+	ctx, ok := ct.(*Ctx)
+	if !ok {
+		panic("invalid type of context provided. make sure it's originated from a client.Ctx")
+	}
 	c.mu.Lock()
 	deps := c.deps[ctx.id]
 	delete(c.deps, ctx.id)
 	c.mu.Unlock()
 
+	// if it's valid then send the end request
 	request := comms.EndRequest{
 		Number: comms.End,
 		Args:   ctx.args,
+		Time:   ctx.timestamp,
 		Caller: ctx.caller,
 		Deps:   deps,
 	}
 
 	// send the end request
-	_ = request
+	if c.socket != nil {
+		c.socket.Send(request.Serialize())
+	}
 }

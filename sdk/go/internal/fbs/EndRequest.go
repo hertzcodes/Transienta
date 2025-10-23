@@ -45,8 +45,20 @@ func (rcv *EndRequest) MutateNumber(n RequestType) bool {
 	return rcv._tab.MutateByteSlot(4, byte(n))
 }
 
-func (rcv *EndRequest) Args() uint32 {
+func (rcv *EndRequest) Time() uint64 {
 	o := flatbuffers.UOffsetT(rcv._tab.Offset(6))
+	if o != 0 {
+		return rcv._tab.GetUint64(o + rcv._tab.Pos)
+	}
+	return 0
+}
+
+func (rcv *EndRequest) MutateTime(n uint64) bool {
+	return rcv._tab.MutateUint64Slot(6, n)
+}
+
+func (rcv *EndRequest) Args() uint32 {
+	o := flatbuffers.UOffsetT(rcv._tab.Offset(8))
 	if o != 0 {
 		return rcv._tab.GetUint32(o + rcv._tab.Pos)
 	}
@@ -54,11 +66,11 @@ func (rcv *EndRequest) Args() uint32 {
 }
 
 func (rcv *EndRequest) MutateArgs(n uint32) bool {
-	return rcv._tab.MutateUint32Slot(6, n)
+	return rcv._tab.MutateUint32Slot(8, n)
 }
 
 func (rcv *EndRequest) Caller() []byte {
-	o := flatbuffers.UOffsetT(rcv._tab.Offset(8))
+	o := flatbuffers.UOffsetT(rcv._tab.Offset(10))
 	if o != 0 {
 		return rcv._tab.ByteVector(o + rcv._tab.Pos)
 	}
@@ -66,7 +78,7 @@ func (rcv *EndRequest) Caller() []byte {
 }
 
 func (rcv *EndRequest) Deps(j int) []byte {
-	o := flatbuffers.UOffsetT(rcv._tab.Offset(10))
+	o := flatbuffers.UOffsetT(rcv._tab.Offset(12))
 	if o != 0 {
 		a := rcv._tab.Vector(o)
 		return rcv._tab.ByteVector(a + flatbuffers.UOffsetT(j*4))
@@ -75,7 +87,7 @@ func (rcv *EndRequest) Deps(j int) []byte {
 }
 
 func (rcv *EndRequest) DepsLength() int {
-	o := flatbuffers.UOffsetT(rcv._tab.Offset(10))
+	o := flatbuffers.UOffsetT(rcv._tab.Offset(12))
 	if o != 0 {
 		return rcv._tab.VectorLen(o)
 	}
@@ -83,7 +95,7 @@ func (rcv *EndRequest) DepsLength() int {
 }
 
 func (rcv *EndRequest) Resp(j int) byte {
-	o := flatbuffers.UOffsetT(rcv._tab.Offset(12))
+	o := flatbuffers.UOffsetT(rcv._tab.Offset(14))
 	if o != 0 {
 		a := rcv._tab.Vector(o)
 		return rcv._tab.GetByte(a + flatbuffers.UOffsetT(j*1))
@@ -92,7 +104,7 @@ func (rcv *EndRequest) Resp(j int) byte {
 }
 
 func (rcv *EndRequest) RespLength() int {
-	o := flatbuffers.UOffsetT(rcv._tab.Offset(12))
+	o := flatbuffers.UOffsetT(rcv._tab.Offset(14))
 	if o != 0 {
 		return rcv._tab.VectorLen(o)
 	}
@@ -100,7 +112,7 @@ func (rcv *EndRequest) RespLength() int {
 }
 
 func (rcv *EndRequest) RespBytes() []byte {
-	o := flatbuffers.UOffsetT(rcv._tab.Offset(12))
+	o := flatbuffers.UOffsetT(rcv._tab.Offset(14))
 	if o != 0 {
 		return rcv._tab.ByteVector(o + rcv._tab.Pos)
 	}
@@ -108,7 +120,7 @@ func (rcv *EndRequest) RespBytes() []byte {
 }
 
 func (rcv *EndRequest) MutateResp(j int, n byte) bool {
-	o := flatbuffers.UOffsetT(rcv._tab.Offset(12))
+	o := flatbuffers.UOffsetT(rcv._tab.Offset(14))
 	if o != 0 {
 		a := rcv._tab.Vector(o)
 		return rcv._tab.MutateByte(a+flatbuffers.UOffsetT(j*1), n)
@@ -117,25 +129,28 @@ func (rcv *EndRequest) MutateResp(j int, n byte) bool {
 }
 
 func EndRequestStart(builder *flatbuffers.Builder) {
-	builder.StartObject(5)
+	builder.StartObject(6)
 }
 func EndRequestAddNumber(builder *flatbuffers.Builder, number RequestType) {
 	builder.PrependByteSlot(0, byte(number), 0)
 }
+func EndRequestAddTime(builder *flatbuffers.Builder, time uint64) {
+	builder.PrependUint64Slot(1, time, 0)
+}
 func EndRequestAddArgs(builder *flatbuffers.Builder, args uint32) {
-	builder.PrependUint32Slot(1, args, 0)
+	builder.PrependUint32Slot(2, args, 0)
 }
 func EndRequestAddCaller(builder *flatbuffers.Builder, caller flatbuffers.UOffsetT) {
-	builder.PrependUOffsetTSlot(2, flatbuffers.UOffsetT(caller), 0)
+	builder.PrependUOffsetTSlot(3, flatbuffers.UOffsetT(caller), 0)
 }
 func EndRequestAddDeps(builder *flatbuffers.Builder, deps flatbuffers.UOffsetT) {
-	builder.PrependUOffsetTSlot(3, flatbuffers.UOffsetT(deps), 0)
+	builder.PrependUOffsetTSlot(4, flatbuffers.UOffsetT(deps), 0)
 }
 func EndRequestStartDepsVector(builder *flatbuffers.Builder, numElems int) flatbuffers.UOffsetT {
 	return builder.StartVector(4, numElems, 4)
 }
 func EndRequestAddResp(builder *flatbuffers.Builder, resp flatbuffers.UOffsetT) {
-	builder.PrependUOffsetTSlot(4, flatbuffers.UOffsetT(resp), 0)
+	builder.PrependUOffsetTSlot(5, flatbuffers.UOffsetT(resp), 0)
 }
 func EndRequestStartRespVector(builder *flatbuffers.Builder, numElems int) flatbuffers.UOffsetT {
 	return builder.StartVector(1, numElems, 1)

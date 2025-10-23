@@ -1,9 +1,12 @@
 package utils
 
-import "hash/fnv"
+import (
+	"hash/fnv"
+)
 
-func Hash(input []byte) uint32 {
+func Hash(signature []byte, input []byte) uint32 {
 	hasher := fnv.New32a()
 	hasher.Write(input)
+	hasher.Write(signature)
 	return hasher.Sum32()
 }

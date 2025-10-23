@@ -7,9 +7,10 @@ import (
 )
 
 type Ctx struct {
-	id     uuid.UUID
-	caller string
-	args   uint32
+	id        uuid.UUID
+	caller    string
+	args      uint32
+	timestamp uint64
 	context.Context
 }
 
