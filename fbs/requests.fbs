@@ -1,26 +1,39 @@
 namespace fbs;
 
-enum RequestType : uint8 {
-  Start = 0,
-  Invalidation = 1,
-  End = 2
-}
-
 table InvalidationRequest {
-  number: RequestType;
   key: string;
 }
 
 table StartRequest {
-  number: RequestType;
-  args: uint32;
+  id: string;
 }
 
 table EndRequest {
-  number: RequestType;
-  time: uint64;
+  id: string;
   args: uint32;
   caller: string;
   deps: [string];
   resp: [ubyte];
 }
+
+table ManagerSaveRequest {
+  key: string;
+  resp: [ubyte];
+}
+
+table ManagerInvalidateRequest {
+    key: string;
+}
+
+union RequestUnion {
+    InvalidationRequest,
+    StartRequest,
+    EndRequest,
+    ManagerSaveRequest,
+    ManagerInvalidateRequest
+}
+
+table Request {
+    request: RequestUnion;
+}
+root_type Request;

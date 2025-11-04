@@ -2,17 +2,22 @@ package client
 
 import (
 	"context"
+	"fmt"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/google/uuid"
+	"go.nanomsg.org/mangos/v3/protocol/rep"
+	_ "go.nanomsg.org/mangos/v3/transport/all"
 )
 
 // Test utilities and helper functions
 func createTestConfig() ClientConfig {
 	return ClientConfig{
 		ManagerIP: "localhost:8080",
-		Cache:     RedisConfig{},
+		SocketURL: "tcp://127.0.0.1:5600",
+		On: true,
 	}
 }
 
@@ -206,12 +211,10 @@ func TestEndRequest(t *testing.T) {
 	client.Finish(ctx, resp)
 
 	// Check that the context was removed from deps
-	client.mu.RLock()
 	casted := ctx.(*Ctx)
 	if _, exists := client.deps[casted.id]; exists {
 		t.Error("Context should be removed from deps after EndRequest")
 	}
-	client.mu.RUnlock()
 }
 
 // Concurrent tests
@@ -470,4 +473,57 @@ func BenchmarkConcurrentStartRequest(b *testing.B) {
 			client.Finish(ctx, "response")
 		}
 	})
+}
+
+func TestStartRequestWithSocket(t *testing.T) {
+    resetSingleton()
+    config := createTestConfig()
+    
+    // Use a channel to signal when listener is ready
+    ready := make(chan bool)
+    
+    go func() {
+        sock, err := rep.NewSocket()
+        if err != nil {
+            panic(err)
+        }
+        if err = sock.Listen(config.SocketURL); err != nil {
+            panic(err)
+        }
+        fmt.Println("NanoMsg listener connected and ready")
+        
+        // Signal that listener is ready
+        close(ready)
+        
+        for {
+            msg, err := sock.Recv()
+            if err != nil {
+                // Don't panic on normal errors, just log and continue
+                fmt.Printf("Error receiving: %v\n", err)
+                continue
+            }
+            
+            fmt.Printf("Received message: %s\n", string(msg))
+            time.Sleep(800 * time.Millisecond)
+            // Send a response back
+            err = sock.Send([]byte("1234"))
+            if err != nil {
+                fmt.Printf("Error sending response: %v\n", err)
+            }
+        }
+    }()
+    
+    // Wait for listener to be ready
+    <-ready
+    time.Sleep(100 * time.Millisecond) // Small additional delay
+    
+    client := New(config)
+    
+    req := []byte("test request")
+    caller := "test-caller"
+    baseCtx := context.Background()
+    result := client.Start(req, caller, baseCtx)
+    if result == nil {
+        t.Error("expected a result ctx")
+    }
 }

@@ -2,9 +2,10 @@ package comms
 
 import (
 	"fmt"
+	"time"
 
 	nng "go.nanomsg.org/mangos/v3"
-	"go.nanomsg.org/mangos/v3/protocol/pair"
+	"go.nanomsg.org/mangos/v3/protocol/req"
 )
 
 func SendRequest(socket nng.Socket, request Request) {
@@ -20,10 +21,11 @@ func SendRequest(socket nng.Socket, request Request) {
 func Connect(url string) (nng.Socket, error) {
 	var sock nng.Socket
 	var err error
-	if sock, err = pair.NewSocket(); err != nil {
+	if sock, err = req.NewSocket(); err != nil {
 		return nil, fmt.Errorf("couldn't create socket. %s", err)
 	}
-
+	sock.SetOption(nng.OptionSendDeadline, 1 * time.Second) // TODO: find a formula for this based on queue size
+	sock.SetOption(nng.OptionRecvDeadline, 1 * time.Second)
 	if err = sock.Dial(url); err != nil {
 		return nil, fmt.Errorf("couldn't dial on URL: %s, MESSAGE: %s", url, err)
 	}

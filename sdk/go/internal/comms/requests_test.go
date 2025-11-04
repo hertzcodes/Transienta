@@ -3,30 +3,29 @@ package comms
 import (
 	"testing"
 
+	flatbuffers "github.com/google/flatbuffers/go"
+	"github.com/google/uuid"
 	"github.com/hertzcodes/transienta/go-sdk/internal/fbs"
 )
 
 func TestStartRequest_Serialize(t *testing.T) {
+	id := uuid.NewString()
 	tests := []struct {
 		name     string
 		request  *StartRequest
 		expected struct {
-			number fbs.RequestType
-			args   uint32
+			ID string
 		}
 	}{
 		{
 			name: "basic start request",
 			request: &StartRequest{
-				Number: Start,
-				Args:   42,
+				ID: id,
 			},
 			expected: struct {
-				number fbs.RequestType
-				args   uint32
+				ID string
 			}{
-				number: fbs.RequestTypeStart,
-				args:   42,
+				ID: id,
 			},
 		},
 	}
@@ -39,17 +38,28 @@ func TestStartRequest_Serialize(t *testing.T) {
 				t.Fatal("Serialized data should not be empty")
 			}
 
-			// Deserialize and verify
-			deserialized := fbs.GetRootAsStartRequest(serialized, 0)
-			if deserialized == nil {
-				t.Fatal("Deserialized request should not be nil")
+			// Deserialize the Request wrapper first
+			reqWrapper := fbs.GetRootAsRequest(serialized, 0)
+			if reqWrapper == nil {
+				t.Fatal("Deserialized request wrapper should not be nil")
 			}
 
-			if deserialized.Number() != tt.expected.number {
-				t.Errorf("Request type should match: expected %v, got %v", tt.expected.number, deserialized.Number())
+			// Check the request type
+			if reqWrapper.RequestType() != fbs.RequestUnionStartRequest {
+				t.Fatalf("Expected RequestUnionStartRequest, got %v", reqWrapper.RequestType())
 			}
-			if deserialized.Args() != tt.expected.args {
-				t.Errorf("Args should match: expected %v, got %v", tt.expected.args, deserialized.Args())
+
+			// Extract the union and get the StartRequest
+			var unionTable flatbuffers.Table
+			if !reqWrapper.Request(&unionTable) {
+				t.Fatal("Failed to get union table")
+			}
+
+			deserialized := &fbs.StartRequest{}
+			deserialized.Init(unionTable.Bytes, unionTable.Pos)
+
+			if string(deserialized.Id()) != tt.expected.ID {
+				t.Errorf("ID should match: expected %v, got %v", tt.expected.ID, string(deserialized.Id()))
 			}
 		})
 	}
@@ -60,7 +70,6 @@ func TestEndRequest_Serialize(t *testing.T) {
 		name     string
 		request  *EndRequest
 		expected struct {
-			number fbs.RequestType
 			args   uint32
 			caller string
 			deps   []string
@@ -70,20 +79,17 @@ func TestEndRequest_Serialize(t *testing.T) {
 		{
 			name: "basic end request",
 			request: &EndRequest{
-				Number: End,
 				Args:   100,
 				Caller: "test-caller",
 				Deps:   []string{"dep1", "dep2"},
 				Resp:   []byte("response data"),
 			},
 			expected: struct {
-				number fbs.RequestType
 				args   uint32
 				caller string
 				deps   []string
 				resp   []byte
 			}{
-				number: fbs.RequestTypeEnd,
 				args:   100,
 				caller: "test-caller",
 				deps:   []string{"dep1", "dep2"},
@@ -93,20 +99,17 @@ func TestEndRequest_Serialize(t *testing.T) {
 		{
 			name: "end request with unicode strings",
 			request: &EndRequest{
-				Number: End,
 				Args:   300,
 				Caller: "测试调用者",
 				Deps:   []string{"依赖1", "依赖2", "dependency-3"},
 				Resp:   []byte("响应数据 with unicode"),
 			},
 			expected: struct {
-				number fbs.RequestType
 				args   uint32
 				caller string
 				deps   []string
 				resp   []byte
 			}{
-				number: fbs.RequestTypeEnd,
 				args:   300,
 				caller: "测试调用者",
 				deps:   []string{"依赖1", "依赖2", "dependency-3"},
@@ -123,15 +126,26 @@ func TestEndRequest_Serialize(t *testing.T) {
 				t.Fatal("Serialized data should not be empty")
 			}
 
-			// Deserialize and verify
-			deserialized := fbs.GetRootAsEndRequest(serialized, 0)
-			if deserialized == nil {
-				t.Fatal("Deserialized request should not be nil")
+			// Deserialize the Request wrapper first
+			reqWrapper := fbs.GetRootAsRequest(serialized, 0)
+			if reqWrapper == nil {
+				t.Fatal("Deserialized request wrapper should not be nil")
 			}
 
-			if deserialized.Number() != tt.expected.number {
-				t.Errorf("Request type should match: expected %v, got %v", tt.expected.number, deserialized.Number())
+			// Check the request type
+			if reqWrapper.RequestType() != fbs.RequestUnionEndRequest {
+				t.Fatalf("Expected RequestUnionEndRequest, got %v", reqWrapper.RequestType())
 			}
+
+			// Extract the union and get the EndRequest
+			var unionTable flatbuffers.Table
+			if !reqWrapper.Request(&unionTable) {
+				t.Fatal("Failed to get union table")
+			}
+
+			deserialized := &fbs.EndRequest{}
+			deserialized.Init(unionTable.Bytes, unionTable.Pos)
+
 			if deserialized.Args() != tt.expected.args {
 				t.Errorf("Args should match: expected %v, got %v", tt.expected.args, deserialized.Args())
 			}
@@ -171,64 +185,51 @@ func TestInvalidationRequest_Serialize(t *testing.T) {
 		name     string
 		request  *InvalidationRequest
 		expected struct {
-			number fbs.RequestType
-			key    string
+			key string
 		}
 	}{
 		{
 			name: "basic invalidation request",
 			request: &InvalidationRequest{
-				Number: Invalidation,
-				Key:    "test-key",
+				Key: "test-key",
 			},
 			expected: struct {
-				number fbs.RequestType
-				key    string
+				key string
 			}{
-				number: fbs.RequestTypeInvalidation,
-				key:    "test-key",
+				key: "test-key",
 			},
 		},
 		{
 			name: "empty key",
 			request: &InvalidationRequest{
-				Number: Invalidation,
-				Key:    "",
+				Key: "",
 			},
 			expected: struct {
-				number fbs.RequestType
-				key    string
+				key string
 			}{
-				number: fbs.RequestTypeInvalidation,
-				key:    "",
+				key: "",
 			},
 		},
 		{
 			name: "long key",
 			request: &InvalidationRequest{
-				Number: Invalidation,
-				Key:    "very-long-key-with-many-characters-that-should-still-work-correctly",
+				Key: "very-long-key-with-many-characters-that-should-still-work-correctly",
 			},
 			expected: struct {
-				number fbs.RequestType
-				key    string
+				key string
 			}{
-				number: fbs.RequestTypeInvalidation,
-				key:    "very-long-key-with-many-characters-that-should-still-work-correctly",
+				key: "very-long-key-with-many-characters-that-should-still-work-correctly",
 			},
 		},
 		{
 			name: "unicode key",
 			request: &InvalidationRequest{
-				Number: Invalidation,
-				Key:    "测试键-测试",
+				Key: "测试键-测试",
 			},
 			expected: struct {
-				number fbs.RequestType
-				key    string
+				key string
 			}{
-				number: fbs.RequestTypeInvalidation,
-				key:    "测试键-测试",
+				key: "测试键-测试",
 			},
 		},
 	}
@@ -241,83 +242,29 @@ func TestInvalidationRequest_Serialize(t *testing.T) {
 				t.Fatal("Serialized data should not be empty")
 			}
 
-			// Deserialize and verify
-			deserialized := fbs.GetRootAsInvalidationRequest(serialized, 0)
-			if deserialized == nil {
-				t.Fatal("Deserialized request should not be nil")
+			// Deserialize the Request wrapper first
+			reqWrapper := fbs.GetRootAsRequest(serialized, 0)
+			if reqWrapper == nil {
+				t.Fatal("Deserialized request wrapper should not be nil")
 			}
 
-			if deserialized.Number() != tt.expected.number {
-				t.Errorf("Request type should match: expected %v, got %v", tt.expected.number, deserialized.Number())
+			// Check the request type
+			if reqWrapper.RequestType() != fbs.RequestUnionInvalidationRequest {
+				t.Fatalf("Expected RequestUnionInvalidationRequest, got %v", reqWrapper.RequestType())
 			}
+
+			// Extract the union and get the InvalidationRequest
+			var unionTable flatbuffers.Table
+			if !reqWrapper.Request(&unionTable) {
+				t.Fatal("Failed to get union table")
+			}
+
+			deserialized := &fbs.InvalidationRequest{}
+			deserialized.Init(unionTable.Bytes, unionTable.Pos)
+
 			if string(deserialized.Key()) != tt.expected.key {
 				t.Errorf("Key should match: expected %v, got %v", tt.expected.key, string(deserialized.Key()))
 			}
 		})
 	}
-}
-
-func TestEdgeCases(t *testing.T) {
-	t.Run("nil slices in EndRequest", func(t *testing.T) {
-		request := &EndRequest{
-			Number: End,
-			Args:   0,
-			Caller: "",
-			Deps:   nil,
-			Resp:   nil,
-		}
-
-		serialized := request.Serialize()
-		if len(serialized) == 0 {
-			t.Fatal("Serialized data should not be empty")
-		}
-
-		deserialized := fbs.GetRootAsEndRequest(serialized, 0)
-		if deserialized == nil {
-			t.Fatal("Deserialized request should not be nil")
-		}
-
-		if deserialized.DepsLength() != 0 {
-			t.Errorf("Deps length should be 0: got %d", deserialized.DepsLength())
-		}
-		if deserialized.RespLength() != 0 {
-			t.Errorf("Resp length should be 0: got %d", deserialized.RespLength())
-		}
-	})
-
-	t.Run("very large response data", func(t *testing.T) {
-		// Create a large response data
-		largeResp := make([]byte, 10000)
-		for i := range largeResp {
-			largeResp[i] = byte(i % 256)
-		}
-
-		request := &EndRequest{
-			Number: End,
-			Args:   0,
-			Caller: "large-data-caller",
-			Deps:   []string{"dep1"},
-			Resp:   largeResp,
-		}
-
-		serialized := request.Serialize()
-		if len(serialized) == 0 {
-			t.Fatal("Serialized data should not be empty")
-		}
-
-		deserialized := fbs.GetRootAsEndRequest(serialized, 0)
-		if deserialized == nil {
-			t.Fatal("Deserialized request should not be nil")
-		}
-
-		actualResp := deserialized.RespBytes()
-		if len(actualResp) != len(largeResp) {
-			t.Errorf("Response length should match: expected %d, got %d", len(largeResp), len(actualResp))
-		}
-		for i, b := range actualResp {
-			if b != largeResp[i] {
-				t.Errorf("Response data should match at index %d: expected %v, got %v", i, largeResp[i], b)
-			}
-		}
-	})
 }

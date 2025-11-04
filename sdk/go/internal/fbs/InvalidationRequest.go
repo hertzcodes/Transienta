@@ -17,11 +17,19 @@ func GetRootAsInvalidationRequest(buf []byte, offset flatbuffers.UOffsetT) *Inva
 	return x
 }
 
+func FinishInvalidationRequestBuffer(builder *flatbuffers.Builder, offset flatbuffers.UOffsetT) {
+	builder.Finish(offset)
+}
+
 func GetSizePrefixedRootAsInvalidationRequest(buf []byte, offset flatbuffers.UOffsetT) *InvalidationRequest {
 	n := flatbuffers.GetUOffsetT(buf[offset+flatbuffers.SizeUint32:])
 	x := &InvalidationRequest{}
 	x.Init(buf, n+offset+flatbuffers.SizeUint32)
 	return x
+}
+
+func FinishSizePrefixedInvalidationRequestBuffer(builder *flatbuffers.Builder, offset flatbuffers.UOffsetT) {
+	builder.FinishSizePrefixed(offset)
 }
 
 func (rcv *InvalidationRequest) Init(buf []byte, i flatbuffers.UOffsetT) {
@@ -33,20 +41,8 @@ func (rcv *InvalidationRequest) Table() flatbuffers.Table {
 	return rcv._tab
 }
 
-func (rcv *InvalidationRequest) Number() RequestType {
-	o := flatbuffers.UOffsetT(rcv._tab.Offset(4))
-	if o != 0 {
-		return RequestType(rcv._tab.GetByte(o + rcv._tab.Pos))
-	}
-	return 0
-}
-
-func (rcv *InvalidationRequest) MutateNumber(n RequestType) bool {
-	return rcv._tab.MutateByteSlot(4, byte(n))
-}
-
 func (rcv *InvalidationRequest) Key() []byte {
-	o := flatbuffers.UOffsetT(rcv._tab.Offset(6))
+	o := flatbuffers.UOffsetT(rcv._tab.Offset(4))
 	if o != 0 {
 		return rcv._tab.ByteVector(o + rcv._tab.Pos)
 	}
@@ -54,13 +50,10 @@ func (rcv *InvalidationRequest) Key() []byte {
 }
 
 func InvalidationRequestStart(builder *flatbuffers.Builder) {
-	builder.StartObject(2)
-}
-func InvalidationRequestAddNumber(builder *flatbuffers.Builder, number RequestType) {
-	builder.PrependByteSlot(0, byte(number), 0)
+	builder.StartObject(1)
 }
 func InvalidationRequestAddKey(builder *flatbuffers.Builder, key flatbuffers.UOffsetT) {
-	builder.PrependUOffsetTSlot(1, flatbuffers.UOffsetT(key), 0)
+	builder.PrependUOffsetTSlot(0, flatbuffers.UOffsetT(key), 0)
 }
 func InvalidationRequestEnd(builder *flatbuffers.Builder) flatbuffers.UOffsetT {
 	return builder.EndObject()

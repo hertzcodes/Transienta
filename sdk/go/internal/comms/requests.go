@@ -6,39 +6,32 @@ import (
 )
 
 type RequestType uint8
-
-const (
-	Start RequestType = iota
-	Invalidation
-	End
-)
-
 type Request interface {
 	Serialize() []byte
 }
 
 type StartRequest struct {
-	Number RequestType
-	Time   uint64
-	Args   uint32
+	ID string
 }
 
 func (s *StartRequest) Serialize() []byte {
 	builder := flatbuffers.NewBuilder(0)
+	idOffset := builder.CreateString(s.ID)
 	fbs.StartRequestStart(builder)
-	fbs.StartRequestAddNumber(builder, fbs.RequestTypeStart)
-	fbs.EndRequestAddTime(builder, s.Time)
-	fbs.StartRequestAddArgs(builder, s.Args)
+	fbs.StartRequestAddId(builder, idOffset)
 
 	offset := fbs.StartRequestEnd(builder)
-	builder.Finish(offset)
+	fbs.RequestStart(builder)
+	fbs.RequestAddRequestType(builder,  fbs.RequestUnionStartRequest)
+	fbs.RequestAddRequest(builder, offset)
+	req := fbs.RequestEnd(builder)
+	builder.Finish(req)
 	return builder.FinishedBytes()
 }
 
 type EndRequest struct {
-	Number RequestType
+	ID     string
 	Args   uint32
-	Time   uint64
 	Caller string
 	Deps   []string
 	Resp   []byte
@@ -46,7 +39,7 @@ type EndRequest struct {
 
 func (e *EndRequest) Serialize() []byte {
 	builder := flatbuffers.NewBuilder(0)
-
+	idOffset := builder.CreateString(e.ID)
 	callerOffset := builder.CreateString(e.Caller)
 	depsOffsets := make([]flatbuffers.UOffsetT, len(e.Deps))
 	for i, dep := range e.Deps {
@@ -60,22 +53,23 @@ func (e *EndRequest) Serialize() []byte {
 	respVector := builder.CreateByteVector(e.Resp)
 
 	fbs.EndRequestStart(builder)
-	fbs.EndRequestAddNumber(builder, fbs.RequestTypeEnd)
-	fbs.EndRequestAddTime(builder, e.Time)
 	fbs.EndRequestAddArgs(builder, e.Args)
+	fbs.EndRequestAddId(builder, idOffset)
 	fbs.EndRequestAddCaller(builder, callerOffset)
 	fbs.EndRequestAddDeps(builder, depsVector)
 	fbs.EndRequestAddResp(builder, respVector)
 
 	offset := fbs.EndRequestEnd(builder)
-	builder.Finish(offset)
+	fbs.RequestStart(builder)
+	fbs.RequestAddRequestType(builder,  fbs.RequestUnionEndRequest)
+	fbs.RequestAddRequest(builder, offset)
+	req := fbs.RequestEnd(builder)
+	builder.Finish(req)
 	return builder.FinishedBytes()
 }
 
 type InvalidationRequest struct {
-	Number RequestType
-	Time   uint64
-	Key    string
+	Key string
 }
 
 func (i *InvalidationRequest) Serialize() []byte {
@@ -83,10 +77,13 @@ func (i *InvalidationRequest) Serialize() []byte {
 	keyOffset := builder.CreateString(i.Key)
 
 	fbs.InvalidationRequestStart(builder)
-	fbs.InvalidationRequestAddNumber(builder, fbs.RequestTypeInvalidation)
 	fbs.InvalidationRequestAddKey(builder, keyOffset)
 
 	offset := fbs.InvalidationRequestEnd(builder)
-	builder.Finish(offset)
+	fbs.RequestStart(builder)
+	fbs.RequestAddRequestType(builder,  fbs.RequestUnionInvalidationRequest)
+	fbs.RequestAddRequest(builder, offset)
+	req := fbs.RequestEnd(builder)
+	builder.Finish(req)
 	return builder.FinishedBytes()
 }

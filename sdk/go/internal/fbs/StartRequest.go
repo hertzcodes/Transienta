@@ -17,11 +17,19 @@ func GetRootAsStartRequest(buf []byte, offset flatbuffers.UOffsetT) *StartReques
 	return x
 }
 
+func FinishStartRequestBuffer(builder *flatbuffers.Builder, offset flatbuffers.UOffsetT) {
+	builder.Finish(offset)
+}
+
 func GetSizePrefixedRootAsStartRequest(buf []byte, offset flatbuffers.UOffsetT) *StartRequest {
 	n := flatbuffers.GetUOffsetT(buf[offset+flatbuffers.SizeUint32:])
 	x := &StartRequest{}
 	x.Init(buf, n+offset+flatbuffers.SizeUint32)
 	return x
+}
+
+func FinishSizePrefixedStartRequestBuffer(builder *flatbuffers.Builder, offset flatbuffers.UOffsetT) {
+	builder.FinishSizePrefixed(offset)
 }
 
 func (rcv *StartRequest) Init(buf []byte, i flatbuffers.UOffsetT) {
@@ -33,38 +41,19 @@ func (rcv *StartRequest) Table() flatbuffers.Table {
 	return rcv._tab
 }
 
-func (rcv *StartRequest) Number() RequestType {
+func (rcv *StartRequest) Id() []byte {
 	o := flatbuffers.UOffsetT(rcv._tab.Offset(4))
 	if o != 0 {
-		return RequestType(rcv._tab.GetByte(o + rcv._tab.Pos))
+		return rcv._tab.ByteVector(o + rcv._tab.Pos)
 	}
-	return 0
-}
-
-func (rcv *StartRequest) MutateNumber(n RequestType) bool {
-	return rcv._tab.MutateByteSlot(4, byte(n))
-}
-
-func (rcv *StartRequest) Args() uint32 {
-	o := flatbuffers.UOffsetT(rcv._tab.Offset(6))
-	if o != 0 {
-		return rcv._tab.GetUint32(o + rcv._tab.Pos)
-	}
-	return 0
-}
-
-func (rcv *StartRequest) MutateArgs(n uint32) bool {
-	return rcv._tab.MutateUint32Slot(6, n)
+	return nil
 }
 
 func StartRequestStart(builder *flatbuffers.Builder) {
-	builder.StartObject(2)
+	builder.StartObject(1)
 }
-func StartRequestAddNumber(builder *flatbuffers.Builder, number RequestType) {
-	builder.PrependByteSlot(0, byte(number), 0)
-}
-func StartRequestAddArgs(builder *flatbuffers.Builder, args uint32) {
-	builder.PrependUint32Slot(1, args, 0)
+func StartRequestAddId(builder *flatbuffers.Builder, id flatbuffers.UOffsetT) {
+	builder.PrependUOffsetTSlot(0, flatbuffers.UOffsetT(id), 0)
 }
 func StartRequestEnd(builder *flatbuffers.Builder) flatbuffers.UOffsetT {
 	return builder.EndObject()
