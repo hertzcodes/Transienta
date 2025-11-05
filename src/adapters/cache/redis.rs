@@ -1,6 +1,8 @@
+use std::fmt::Debug;
+
 use super::cache::CacheProvider;
 use crate::config::{self, Config};
-use redis::Commands;
+use redis::{Commands, FromRedisValue, RedisResult};
 pub struct Redis {
     connection: redis::Connection,
     config: redis::ConnectionInfo,
@@ -16,8 +18,8 @@ impl Redis {
             addr: redis::ConnectionAddr::Tcp(cache_conf.host.clone(), cache_conf.port),
             redis: redis::RedisConnectionInfo {
                 db: cache_conf.db,
-                username: Some(cache_conf.username.clone()),
-                password: Some(cache_conf.password.clone()),
+                username: cache_conf.username.clone(),
+                password: cache_conf.password.clone(),
                 ..Default::default()
             },
         };
@@ -37,13 +39,18 @@ impl Redis {
 }
 
 impl CacheProvider for Redis {
-    fn set(&self, key: &str, value: &str) {
-        // self.connection.set(key, value);
-        return;
+    fn set(&mut self, key: &str, value: &[u8]) -> RedisResult<()> {
+        self.connection.set::<&str, &[u8], ()>(key, value)?;
+        Ok(())
     }
 
     fn get(&self, key: &str) {
-        // self.connection.get(key);
-        return;
+        // self.connection.get(key).ok();
+        todo!("not implemented yet")
+    }
+
+    fn del(&mut self, key: &str) -> RedisResult<()> {
+        self.connection.del::<&str, ()>(key)?;
+        Ok(())
     }
 }

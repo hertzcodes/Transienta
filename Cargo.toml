@@ -5,10 +5,16 @@ edition = "2024"
 
 [dependencies]
 dotenvy = "0.15.7"
+flatbuffers = "25.9.23"
 lru = "0.16.1"
+nng = "1.0.1"
+prometheus = "0.14.0"
 redis = "0.32.7"
 serde = "1.0.228"
 serde_yaml = "0.9.34"
+
+[package.metadata.rust-2024-compat]
+unsafe = "warn"
 
 [dev-dependencies]
 criterion = "0.5"

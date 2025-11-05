@@ -1,4 +1,4 @@
-use crate::cache::{self, CacheProvider};
+use crate::adapters::cache::{self, CacheProvider};
 use crate::config;
 pub struct App {
     cfg: config::Config,
@@ -18,8 +18,6 @@ impl App {
     }
 
     #[cfg(test)]
-    #[allow(dead_code)]
-    #[deprecated(note = "use App::new instead")]
     pub fn mock_app(cfg: config::Config) -> Self {
         return App {
             cfg: cfg,

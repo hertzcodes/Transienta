@@ -8,7 +8,7 @@ pub struct Config {
     pub cache: CacheConfig,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct ManagerConfig {
     pub name: String,
     #[serde(default = "default_manager_port")]
@@ -41,9 +41,9 @@ pub struct RedisConfig {
     #[serde(default = "default_redis_host")]
     pub host: String,
     #[serde(default)]
-    pub username: String,
+    pub username: Option<String>,
     #[serde(default)]
-    pub password: String,
+    pub password: Option<String>,
 }
 
 fn default_redis_host() -> String {
