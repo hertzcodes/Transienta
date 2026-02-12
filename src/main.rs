@@ -1,6 +1,6 @@
 use dotenvy::dotenv;
 use std::env;
-use transienta::{app, config::Config};
+use transienta::{app, config::Config, manager::manager};
 fn main() {
     dotenv().ok();
     const DEFAULT_CONFIG_PATH: &str = "/etc/transienta/config.yaml";
@@ -9,4 +9,8 @@ fn main() {
     let cfg = Config::new(conf_path);
 
     let app = app::App::new(cfg);
+
+    let mut manager = manager::Manager::new(app);
+
+    manager.run();
 }

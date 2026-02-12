@@ -24,7 +24,6 @@ type Client struct {
 	config            ClientConfig
 	socket            mangos.Socket
 	outbox            *outbox.OutBox
-	manager_timestamp uint64
 }
 
 func New(config ClientConfig) *Client {
@@ -35,7 +34,7 @@ func New(config ClientConfig) *Client {
 				config: config,
 			}
 
-			// set socket (REQ)
+			// set socket (PAIR)
 			sock, err := comms.Connect(config.SocketURL)
 			if err != nil {
 				return
@@ -45,7 +44,7 @@ func New(config ClientConfig) *Client {
 			// set outbox
 			o, err := outbox.New(outbox.DBTypePebble, "./.transienta_db")
 			if err != nil {
-				panic(fmt.Sprintf("TRANSIENTA: failed to create outbox. is database configuration correct?\n type: %s , path: %s", "pebble", "./db"))
+				panic(fmt.Sprintf("TRANSIENTA: failed to create outbox. is database configuration correct?\n type: %s , path: %s, err: %s", "pebble", "./transienta_db", err.Error()))
 			}
 			instance.outbox = o
 			ch := make(chan string, 20000)
@@ -80,7 +79,6 @@ func (c *Client) Start(req []byte, caller string, base context.Context) context.
 			// TODO: should it be blocking?
 			c.socket.Send(request.Serialize())
 		}
-		ctx.timestamp = c.manager_timestamp
 		c.mu.Lock()
 		c.deps[ctx.id] = make([]string, 0)
 		c.mu.Unlock()
@@ -112,7 +110,7 @@ func (c *Client) Invalidate(key string) {
 	if c.config.On {
 		// COULD THIS BE REMOVED?
 		request := comms.InvalidationRequest{
-			Key:    key,
+			Key: key,
 		}
 		if c.socket != nil {
 			if err := c.socket.Send(request.Serialize()); err != nil {
@@ -129,7 +127,7 @@ func (c *Client) sendInvalidationsFromOutbox(ch chan string) {
 	go func() {
 		for key := range ch {
 			request := comms.InvalidationRequest{
-				Key:    key,
+				Key: key,
 			}
 			if c.socket != nil {
 				if err := c.socket.Send(request.Serialize()); err == nil {
@@ -142,18 +140,18 @@ func (c *Client) sendInvalidationsFromOutbox(ch chan string) {
 
 func (c *Client) Finish(ct context.Context, resp any) {
 	if c.config.On {
-			ctx, ok := ct.(*Ctx)
-			if !ok {
-				panic("invalid type of context provided. make sure it's originated from a client.Ctx")
-			}
-			c.mu.Lock()
-			deps := c.deps[ctx.id]
-			delete(c.deps, ctx.id)
-			c.mu.Unlock()
+		ctx, ok := ct.(*Ctx)
+		if !ok {
+			panic("invalid type of context provided. make sure it's originated from a client.Ctx")
+		}
+		c.mu.Lock()
+		deps := c.deps[ctx.id]
+		delete(c.deps, ctx.id)
+		c.mu.Unlock()
 		go func() {
 			// if it's valid then send the end request
 			request := comms.EndRequest{
-				ID: ctx.id.String(),
+				ID:     ctx.id.String(),
 				Args:   ctx.args,
 				Caller: ctx.caller,
 				Deps:   deps,
